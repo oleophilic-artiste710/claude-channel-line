@@ -1,6 +1,6 @@
 # LINE Channel for Claude Code
 
-[繁體中文](README.zh-TW.md) | English
+[繁體中文](README.zh-TW.md) | English | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 Push LINE messages into your Claude Code session via the LINE Messaging API, so Claude can receive and reply to your LINE messages in real time.
 

@@ -1,0 +1,372 @@
+# LINE Channel for Claude Code
+
+[English](README.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | 한국어
+
+LINE Messaging API를 통해 LINE 메시지를 Claude Code 세션으로 전송하여, Claude가 LINE 메시지를 실시간으로 수신하고 답장할 수 있도록 합니다.
+
+---
+
+## 목차
+
+- [요구 사항](#요구-사항)
+- [사전 준비](#사전-준비)
+  - [Claude Code 설치](#1-claude-code-설치)
+  - [Bun 설치](#2-bun-설치)
+  - [ngrok 설치](#3-ngrok-설치)
+  - [LINE Bot 생성](#4-line-bot-생성)
+- [설치 및 설정](#설치-및-설정)
+  - [저장소 클론](#1-저장소-클론)
+  - [LINE 인증 정보 저장](#2-line-인증-정보-저장)
+  - [MCP Server 추가](#3-mcp-server-추가)
+  - [ngrok 실행](#4-ngrok-실행)
+  - [LINE Webhook 설정](#5-line-webhook-설정)
+  - [Claude Code 실행](#6-claude-code-실행)
+  - [LINE 계정 페어링](#7-line-계정-페어링)
+- [다른 사용자 추가](#다른-사용자-추가)
+- [액세스 정책](#액세스-정책)
+- [환경 변수](#환경-변수)
+- [문제 해결](#문제-해결)
+
+---
+
+## 요구 사항
+
+- **OS**: Windows / macOS / Linux
+- **Claude Code** v2.1.80 이상, claude.ai 계정으로 로그인（API key 불가）
+- **Bun** 런타임
+- **ngrok** 계정（무료 플랜 가능）
+- **LINE Developers** 계정（무료）
+
+---
+
+## 사전 준비
+
+### 1. Claude Code 설치
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+설치 후 로그인：
+
+```bash
+claude
+```
+
+화면의 안내에 따라 claude.ai 계정으로 로그인하세요.
+
+---
+
+### 2. Bun 설치
+
+**macOS / Linux：**
+
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+powershell -c "irm bun.sh/install.ps1 | iex"
+```
+
+설치 확인：
+
+```bash
+bun --version
+```
+
+---
+
+### 3. ngrok 설치
+
+[https://ngrok.com](https://ngrok.com) 에서 무료 계정을 만든 후：
+
+**macOS（Homebrew）：**
+
+```bash
+brew install ngrok
+```
+
+**Windows：**
+
+[https://ngrok.com/download](https://ngrok.com/download) 에서 다운로드 후 압축을 풀고 PATH에 추가합니다.
+
+**authtoken 설정**（[ngrok Dashboard](https://dashboard.ngrok.com/get-started/your-authtoken) 에서 복사）：
+
+```bash
+ngrok config add-authtoken 당신의authtoken
+```
+
+---
+
+### 4. LINE Bot 생성
+
+1. [LINE Developers Console](https://developers.line.biz/console/) 에 로그인
+2. **Create a Provider** 클릭 후 이름 입력（예：`My Claude Bot`）
+3. **Create a new channel** → **Messaging API** 선택
+4. 필수 항목（Channel name, 설명, 카테고리）을 입력하고 생성
+
+인증 정보 획득：
+
+- **Channel Secret**：channel → **Basic settings** 탭 → `Channel secret` 복사
+- **Channel Access Token**：channel → **Messaging API** 탭 → 하단의 **Issue** 클릭 → 토큰 복사
+
+**Messaging API** 탭에서 다음 항목을 비활성화（자동 응답 방지）：
+- **Auto-reply messages** → **Disabled**
+- **Greeting messages** → **Disabled**
+
+---
+
+## 설치 및 설정
+
+### 1. 저장소 클론
+
+```bash
+git clone https://github.com/Moksa1123/claude-channel-line
+cd claude-channel-line
+```
+
+---
+
+### 2. LINE 인증 정보 저장
+
+인증 정보는 `~/.claude/channels/line/.env` 에 저장되며, git에는 **커밋되지 않습니다**.
+
+**macOS / Linux：**
+
+```bash
+mkdir -p ~/.claude/channels/line
+cat > ~/.claude/channels/line/.env << EOF
+LINE_CHANNEL_ACCESS_TOKEN=Channel Access Token 붙여넣기
+LINE_CHANNEL_SECRET=Channel Secret 붙여넣기
+EOF
+```
+
+**Windows（PowerShell）：**
+
+```powershell
+New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\channels\line"
+@"
+LINE_CHANNEL_ACCESS_TOKEN=Channel Access Token 붙여넣기
+LINE_CHANNEL_SECRET=Channel Secret 붙여넣기
+"@ | Set-Content "$env:USERPROFILE\.claude\channels\line\.env"
+```
+
+---
+
+### 3. MCP Server 추가
+
+**macOS / Linux：**
+
+```bash
+claude mcp add line bun "/path/to/claude-channel-line/server.ts"
+```
+
+**Windows：**
+
+```powershell
+claude mcp add line bun "C:/path/to/claude-channel-line/server.ts"
+```
+
+> 경로를 실제로 클론한 위치로 변경하세요.
+
+확인：
+
+```bash
+claude mcp list
+```
+
+목록에 `line` 이 표시되면 성공입니다.
+
+---
+
+### 4. ngrok 실행
+
+**별도의 터미널 창**에서 실행：
+
+```bash
+ngrok http 8789
+```
+
+다음과 같은 출력이 표시됩니다：
+
+```
+Forwarding  https://xxxx.ngrok-free.app -> http://localhost:8789
+```
+
+`https://xxxx.ngrok-free.app` URL을 복사해두세요.
+
+> **주의**：ngrok 창을 열어둬야 합니다. 닫으면 연결이 끊깁니다. 무료 플랜은 재시작할 때마다 URL이 변경되므로, LINE Console에서 Webhook URL을 다시 설정해야 합니다.
+
+---
+
+### 5. LINE Webhook 설정
+
+[LINE Developers Console](https://developers.line.biz/console/) 에서 채널을 열고：
+
+1. **Messaging API** 탭 클릭
+2. **Webhook URL** 필드의 **Edit** 클릭
+3. `https://xxxx.ngrok-free.app/webhook` 입력（ngrok URL로 교체）
+4. **Update** 클릭
+5. **Use webhook** 토글 활성화
+6. **Verify** 클릭 → **Success** 표시되면 완료
+
+---
+
+### 6. Claude Code 실행
+
+**새 터미널 창**에서 실행：
+
+```bash
+claude --dangerously-load-development-channels server:line
+```
+
+Claude Code가 LINE MCP server에 연결되고 메시지 수신을 시작합니다.
+
+> **중요**：매번 `--dangerously-load-development-channels server:line` 플래그를 붙여서 실행해야 합니다. 플래그 없이 `claude` 만 실행하면 LINE 메시지를 수신하지 않습니다.
+
+> **Windows 주의**：이 명령어는 일반 터미널（PowerShell / CMD）에서 실행하세요. Claude Code 내부에서는 실행할 수 없습니다.
+
+---
+
+### 7. LINE 계정 페어링
+
+1. LINE에서 봇을 찾습니다（LINE Developers Console → Messaging API → **Bot basic ID** 에서 확인 가능）
+2. 봇에게 아무 메시지나 전송（예：`안녕`）
+3. 봇이 페어링 코드를 답장합니다：
+
+   ```
+   페어링 코드：A1B2C3
+
+   Claude Code에서 실행하세요：
+   /line:access pair A1B2C3
+   ```
+
+4. 페어링 코드에 해당하는 userId 확인：
+
+   **macOS / Linux：**
+   ```bash
+   cat ~/.claude/channels/line/pending/A1B2C3.json
+   ```
+
+   **Windows（PowerShell）：**
+   ```powershell
+   Get-Content "$env:USERPROFILE\.claude\channels\line\pending\A1B2C3.json"
+   ```
+
+   출력 예시：
+   ```json
+   {
+     "userId": "Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "expires": 1234567890000
+   }
+   ```
+
+5. userId를 화이트리스트에 추가（`~/.claude/channels/line/access.json` 편집）：
+
+   **macOS / Linux：**
+   ```bash
+   cat > ~/.claude/channels/line/access.json << EOF
+   {
+     "policy": "allowlist",
+     "allowlist": ["Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+   }
+   EOF
+   ```
+
+   **Windows（PowerShell）：**
+   ```powershell
+   @"
+   {
+     "policy": "allowlist",
+     "allowlist": ["Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+   }
+   "@ | Set-Content "$env:USERPROFILE\.claude\channels\line\access.json"
+   ```
+
+6. LINE에서 다시 메시지를 보내면 Claude가 수신하고 답장합니다！
+
+---
+
+## 다른 사용자 추가
+
+다른 사람도 봇을 사용할 수 있도록 하려면：
+
+1. 상대방에게 봇을 친구 추가하고 메시지를 보내달라고 합니다（페어링 코드가 전달됨）
+2. 상대방에게 페어링 코드를 받습니다
+3. `~/.claude/channels/line/pending/<코드>.json` 에서 상대방의 userId 확인
+4. `access.json` 의 `allowlist` 에 추가：
+
+```json
+{
+  "policy": "allowlist",
+  "allowlist": [
+    "U나의userId",
+    "U상대방의userId"
+  ]
+}
+```
+
+---
+
+## 액세스 정책
+
+`~/.claude/channels/line/access.json` 의 `policy` 필드를 편집：
+
+| 정책 | 동작 | 사용 시기 |
+|------|------|-----------|
+| `pairing` | 누구든 메시지를 보내면 페어링 코드 발송（기본값） | 초기 설정, 사용자 추가 시 |
+| `allowlist` | 화이트리스트의 userId만 메시지 수신（나머지는 무시） | 일반 사용（권장） |
+| `open` | 누구든 메시지 전송 가능 | 비권장 |
+
+---
+
+## 환경 변수
+
+| 변수명 | 설명 | 기본값 |
+|--------|------|--------|
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE Channel Access Token | **필수** |
+| `LINE_CHANNEL_SECRET` | LINE Channel Secret | **필수** |
+| `LINE_WEBHOOK_PORT` | Webhook 서버 포트 | `8789` |
+
+---
+
+## 문제 해결
+
+**Verify에서 502 Bad Gateway 표시**
+
+LINE server가 실행되지 않은 상태입니다. `claude --dangerously-load-development-channels server:line` 으로 실행했는지 확인하세요.
+
+**메시지를 보내도 봇이 응답하지 않음**
+
+- ngrok이 실행 중인지 확인
+- LINE Webhook URL이 올바르고 **Use webhook** 이 활성화되어 있는지 확인
+- `access.json` 의 policy와 userId가 올바른지 확인
+
+**ngrok 재시작 시마다 URL이 변경됨**
+
+무료 플랜은 재시작할 때마다 URL이 변경됩니다. 매번 LINE Developers Console에서 Webhook URL을 업데이트해야 합니다. 고정 URL이 필요하다면 유료 플랜을 고려하세요.
+
+**Windows에서 토큰에 특수 문자가 포함된 경우**
+
+토큰을 따옴표로 감싸세요：
+
+```powershell
+$env:LINE_CHANNEL_ACCESS_TOKEN="특수문자가+포함된/토큰="
+```
+
+**MCP server 시작 실패（포트 사용 중）**
+
+```bash
+claude mcp remove line
+claude mcp add line bun "/path/to/server.ts" -e LINE_WEBHOOK_PORT=8790
+ngrok http 8790
+```
+
+---
+
+## 라이선스
+
+MIT

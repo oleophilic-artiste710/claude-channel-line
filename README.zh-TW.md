@@ -1,6 +1,6 @@
 # LINE Channel for Claude Code
 
-[English](README.md) | 繁體中文
+[English](README.md) | 繁體中文 | [日本語](README.ja.md) | [한국어](README.ko.md)
 
 透過 LINE Messaging API 將 LINE 訊息推送進 Claude Code session，讓 Claude 能即時接收並回覆你的 LINE 訊息。
 
