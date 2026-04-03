@@ -25,6 +25,7 @@ Push LINE messages into your Claude Code session via the LINE Messaging API, so 
 - [Always-on Webhook Service (auto-start)](#always-on-webhook-service-auto-start)
 - [Adding more users](#adding-more-users)
 - [Access Policy](#access-policy)
+- [Sending Messages](#sending-messages)
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 
@@ -373,6 +374,21 @@ Edit the `policy` field in `~/.claude/channels/line/access.json`:
 | `pairing` | Anyone who messages the bot receives a pairing code (default) | Initial setup, adding new users |
 | `allowlist` | Only userIds in the allowlist can send messages; others are silently dropped | Normal use — recommended |
 | `open` | Anyone can send messages | Not recommended — no access control |
+
+---
+
+## Sending Messages
+
+Claude can reply to LINE users using these message types:
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `reply` | Text | Plain text message (auto-split at 5,000 chars, up to 5 chunks) |
+| `reply_image` | Image | Send an image via HTTPS URL |
+| `reply_flex` | Flex Message | Rich card layout — supports buttons, links, images, and carousels (bubble / carousel) |
+| `reply_mixed` | Mixed | Send up to 5 messages of any type in a single call |
+
+> **Note**: `reply_token` is valid for 30 seconds after receiving a message. After expiry, Claude automatically switches to push mode using `user_id`.
 
 ---
 
