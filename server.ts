@@ -5,6 +5,7 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprot
 import { createHmac } from 'crypto'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'fs'
 import { join, dirname } from 'path'
+import { execSync } from 'child_process'
 
 // ── 設定 ──────────────────────────────────────────────────
 const CHANNEL_DIR = join(
@@ -13,6 +14,42 @@ const CHANNEL_DIR = join(
 )
 const ENV_FILE    = join(CHANNEL_DIR, '.env')
 const ACCESS_FILE = join(CHANNEL_DIR, 'access.json')
+const PID_FILE    = join(CHANNEL_DIR, 'server.pid')
+
+// ── 舊 instance 清理 ────────────────────────────────────
+// 確保同一時間只有一個 server.ts 在讀取 messages/ 佇列
+function killOldInstance() {
+  try {
+    if (existsSync(PID_FILE)) {
+      const oldPid = parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10)
+      if (oldPid && oldPid !== process.pid) {
+        try {
+          // 檢查 process 是否還在跑
+          process.kill(oldPid, 0)
+          // 還在跑，殺掉它
+          process.kill(oldPid, 'SIGTERM')
+          console.error(`[line] 已清理舊的 server.ts instance (PID: ${oldPid})`)
+        } catch {
+          // process 已經不在了，忽略
+        }
+      }
+    }
+  } catch { /* PID 檔讀取失敗，忽略 */ }
+
+  // 寫入當前 PID
+  writeFileSync(PID_FILE, String(process.pid))
+  console.error(`[line] server.ts 啟動 (PID: ${process.pid})`)
+
+  // 退出時清理 PID 檔
+  const cleanup = () => {
+    try { if (existsSync(PID_FILE)) unlinkSync(PID_FILE) } catch {}
+  }
+  process.on('exit', cleanup)
+  process.on('SIGTERM', () => { cleanup(); process.exit(0) })
+  process.on('SIGINT', () => { cleanup(); process.exit(0) })
+}
+
+killOldInstance()
 const MSG_DIR     = join(CHANNEL_DIR, 'messages')
 
 // 從 ~/.claude/channels/line/.env 載入憑證
