@@ -7,6 +7,14 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, unlink
 import { join, dirname } from 'path'
 import { execSync } from 'child_process'
 
+// ── 全域例外處理：防止未預期 crash 讓 queue 訊息消失 ─────────
+process.on('uncaughtException', (err) => {
+  console.error('[line] uncaughtException:', err)
+})
+process.on('unhandledRejection', (reason) => {
+  console.error('[line] unhandledRejection:', reason)
+})
+
 // ── 設定 ──────────────────────────────────────────────────
 const CHANNEL_DIR = join(
   process.env.HOME ?? process.env.USERPROFILE ?? '~',
@@ -288,6 +296,25 @@ mcp.onclose = () => {
   process.exit(0)
 }
 
+// SDK 缺陷補丁：StdioServerTransport 沒有監聽 stdin close/end 事件
+// 當 Claude Code 進行 context compaction 或內部重啟時，stdin pipe 會關閉
+// 但 SDK 不會偵測到，導致 server.ts 繼續跑卻收不到任何訊息
+// 解法：直接監聽 process.stdin，手動觸發 mcp.close()
+process.stdin.on('close', () => {
+  if (mcpReady) {
+    console.error('[line] stdin 已關閉（Claude Code 斷線），觸發清理')
+    mcpReady = false
+    mcp.close().catch(() => {})
+  }
+})
+process.stdin.on('end', () => {
+  if (mcpReady) {
+    console.error('[line] stdin EOF，觸發清理')
+    mcpReady = false
+    mcp.close().catch(() => {})
+  }
+})
+
 // ── 佇列輪詢：讀取 webhook-service 存入的訊息 ────────────
 mkdirSync(MSG_DIR, { recursive: true })
 
@@ -302,7 +329,7 @@ setTimeout(() => {
   console.error('[line] MCP ready, 開始處理排隊訊息')
 }, QUEUE_START_DELAY)
 
-setInterval(async () => {
+setInterval(() => { (async () => {
   if (!mcpReady) return
 
   let files: string[]
@@ -357,7 +384,7 @@ setInterval(async () => {
       } catch { /* 檔案讀寫失敗，下次再試 */ }
     }
   }
-}, QUEUE_POLL_INTERVAL)
+})().catch(err => console.error('[line] setInterval error:', err)) }, QUEUE_POLL_INTERVAL)
 
 // ── Webhook Server（若 webhook-service 未啟動則自己起） ───
 try {
