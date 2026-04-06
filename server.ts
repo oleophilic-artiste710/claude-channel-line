@@ -279,13 +279,14 @@ mcp.setRequestHandler(CallToolRequestSchema, async req => {
 })
 
 // MCP 連線：斷線時立刻退出，確保 messages/ 裡的訊息不被誤刪
+// 注意：transport.onclose 會被 mcp.connect() 覆蓋，必須用 mcp.onclose
 const transport = new StdioServerTransport()
-transport.onclose = () => {
+await mcp.connect(transport)
+mcp.onclose = () => {
   console.error('[line] MCP 連線中斷，server.ts 退出（messages/ 保留供下次 session）')
   mcpReady = false
   process.exit(0)
 }
-await mcp.connect(transport)
 
 // ── 佇列輪詢：讀取 webhook-service 存入的訊息 ────────────
 mkdirSync(MSG_DIR, { recursive: true })
@@ -325,7 +326,11 @@ setInterval(async () => {
         params: { content: text, meta },
       })
 
-      // 發送成功，刪除檔案
+      // 發送成功才刪除；若 mcp.onclose 在 notification 送出後觸發，保留檔案
+      if (!mcpReady) {
+        console.error(`[line] MCP 在送出後斷線，保留訊息: ${file}`)
+        break
+      }
       unlinkSync(fp)
       console.error(`[line] 佇列訊息已送出: ${file}`)
     } catch (err: any) {
