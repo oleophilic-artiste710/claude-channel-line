@@ -324,26 +324,41 @@ const QUEUE_START_DELAY = 20000  // 啟動後等 20 秒（給 Claude Code 初始
 const QUEUE_POLL_INTERVAL = 1000
 const MAX_RETRY = 3
 
-// 啟動時若有離線訊息，先 push 給使用者確認（確保看到，不依賴 Claude 狀態）
+// 啟動時若有離線訊息，push 給使用者看到內容，然後刪除檔案
+// 不再嘗試 mcp.notification()（因為 reconnect 後 Claude 收不到）
 async function notifyQueuedMessages() {
   let files: string[]
   try { files = readdirSync(MSG_DIR).filter(f => f.endsWith('.json')).sort() }
   catch { return }
   if (files.length === 0) return
 
-  const lines = files.map(f => {
-    try {
-      const d = JSON.parse(readFileSync(join(MSG_DIR, f), 'utf-8'))
-      const ago = Math.round((Date.now() - (d.ts ?? 0)) / 1000)
-      return `• ${d.text?.slice(0, 80) ?? '(空)'}（${ago} 秒前）`
-    } catch { return null }
-  }).filter(Boolean)
+  const lines: string[] = []
+  const filePaths: string[] = []
 
+  for (const f of files) {
+    const fp = join(MSG_DIR, f)
+    try {
+      const d = JSON.parse(readFileSync(fp, 'utf-8'))
+      const ago = Math.round((Date.now() - (d.ts ?? 0)) / 1000)
+      const minAgo = ago >= 60 ? `${Math.round(ago / 60)} 分鐘前` : `${ago} 秒前`
+      lines.push(`• ${d.text?.slice(0, 80) ?? '(空)'}（${minAgo}）`)
+      filePaths.push(fp)
+    } catch { /* 格式錯誤，跳過 */ }
+  }
+
+  if (lines.length === 0) return
+
+  // Push 給使用者，確保一定看到
   await lineCall('push', {
     to: (JSON.parse(readFileSync(join(CHANNEL_DIR, 'access.json'), 'utf-8')) as AccessConfig).allowlist[0],
-    messages: [{ type: 'text', text: `📬 發現 ${files.length} 條離線訊息，Claude 正在補處理中：\n\n${lines.join('\n')}\n\n如未收到回覆，請重新詢問。` }],
+    messages: [{ type: 'text', text: `📬 發現 ${lines.length} 條離線訊息：\n\n${lines.join('\n')}\n\nClaude 無法自動補處理，請重新傳送需要回覆的訊息。` }],
   })
-  console.error(`[line] 離線訊息通知已 push（${files.length} 條）`)
+
+  // 刪除已通知的檔案（不再讓 setInterval 嘗試 notification）
+  for (const fp of filePaths) {
+    try { unlinkSync(fp) } catch {}
+  }
+  console.error(`[line] 離線訊息已 push 通知並清理（${lines.length} 條）`)
 }
 
 setTimeout(async () => {
@@ -376,7 +391,9 @@ setInterval(() => { (async () => {
         params: { content: text, meta },
       })
 
-      // 發送成功才刪除；若 mcp.onclose 在 notification 送出後觸發，保留檔案
+      // 等 500ms 讓 onclose 有機會觸發，避免「成功送出但 Claude 沒收到」的誤刪
+      await new Promise(r => setTimeout(r, 500))
+
       if (!mcpReady) {
         console.error(`[line] MCP 在送出後斷線，保留訊息: ${file}`)
         break
