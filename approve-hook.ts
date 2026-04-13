@@ -14,9 +14,22 @@ const CHANNEL_DIR = join(
   '.claude', 'channels', 'line',
 )
 const APPROVAL_DIR = join(CHANNEL_DIR, 'approvals')
+const PID_FILE = join(CHANNEL_DIR, 'server.pid')
 const ENV_FILE = join(CHANNEL_DIR, '.env')
 
 mkdirSync(APPROVAL_DIR, { recursive: true })
+
+// ── 檢查 LINE MCP server 是否在跑 ─────────────────────────
+// 只有 LINE channel 啟用時才走 LINE 審批，否則自動放行
+function isLineMcpRunning(): boolean {
+  try {
+    if (!existsSync(PID_FILE)) return false
+    const pid = parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10)
+    if (!pid) return false
+    process.kill(pid, 0) // 不殺，只檢查存在
+    return true
+  } catch { return false }
+}
 
 // ── 載入 LINE 憑證 ──────────────────────────────────────
 if (existsSync(ENV_FILE)) {
@@ -95,7 +108,7 @@ async function pushApprovalFlex(approvalId: string, toolName: string, summary: s
 
   const flex = {
     type: 'flex',
-    altText: `🔐 ${toolName} 授權請求`,
+    altText: `${toolName} 授權請求`,
     contents: {
       type: 'bubble',
       header: {
@@ -104,8 +117,8 @@ async function pushApprovalFlex(approvalId: string, toolName: string, summary: s
         backgroundColor: '#2C3E50',
         paddingAll: '12px',
         contents: [
-          { type: 'text', text: '🔐 Permission Request', size: 'md', color: '#ffffff', weight: 'bold' },
-          { type: 'text', text: `📂 ${projectLabel}`, size: 'xs', color: '#95a5c6', margin: 'xs' },
+          { type: 'text', text: 'Permission Request', size: 'md', color: '#ffffff', weight: 'bold' },
+          { type: 'text', text: projectLabel, size: 'xs', color: '#95a5c6', margin: 'xs' },
         ],
       },
       body: {
@@ -129,13 +142,13 @@ async function pushApprovalFlex(approvalId: string, toolName: string, summary: s
         contents: [
           {
             type: 'button',
-            action: { type: 'postback', label: '✅ 允許', data: `action=approve&id=${approvalId}` },
+            action: { type: 'postback', label: 'Allow', data: `action=approve&id=${approvalId}` },
             style: 'primary',
             color: '#28a745',
           },
           {
             type: 'button',
-            action: { type: 'postback', label: '❌ 拒絕', data: `action=deny&id=${approvalId}` },
+            action: { type: 'postback', label: 'Deny', data: `action=deny&id=${approvalId}` },
             style: 'primary',
             color: '#dc3545',
           },
@@ -180,6 +193,9 @@ async function main() {
   const raw = await readStdin()
   let input: any
   try { input = JSON.parse(raw) } catch { process.exit(0) } // 解析失敗 → 放行
+
+  // LINE MCP 沒在跑 → 自動放行（不影響其他 session）
+  if (!isLineMcpRunning()) process.exit(0)
 
   const toolName = input.tool_name ?? ''
   const toolInput = input.tool_input ?? {}

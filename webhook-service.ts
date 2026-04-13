@@ -217,10 +217,10 @@ Bun.serve({
                 writeFileSync(fp, JSON.stringify(data, null, 2))
                 if (replyToken) {
                   await lineReply(replyToken,
-                    action === 'approve' ? '✅ 已允許執行' : '❌ 已拒絕執行')
+                    action === 'approve' ? 'Allowed' : 'Denied')
                 }
               } else if (replyToken) {
-                await lineReply(replyToken, '⚠️ 授權請求已過期或不存在')
+                await lineReply(replyToken, '授權請求已過期或不存在')
               }
             } catch (e) {
               console.error('[approval] postback error:', e)
