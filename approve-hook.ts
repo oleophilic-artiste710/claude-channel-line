@@ -14,13 +14,12 @@ const CHANNEL_DIR = join(
   '.claude', 'channels', 'line',
 )
 const APPROVAL_DIR = join(CHANNEL_DIR, 'approvals')
-const PID_FILE = join(CHANNEL_DIR, 'server.pid')
 const ENV_FILE = join(CHANNEL_DIR, '.env')
 
 mkdirSync(APPROVAL_DIR, { recursive: true })
 
 // ── 設定檔：approve-config.json ───────────────────────────
-// scope: "line-only" → 只有 LINE MCP 啟用的 session 才審批
+// scope: "line-only" → 只有帶 LINE_APPROVE=1 env 的 session 才審批
 //        "all"       → 所有 session 都走 LINE 審批
 const CONFIG_FILE = join(CHANNEL_DIR, 'approve-config.json')
 
@@ -30,25 +29,16 @@ function loadConfig(): ApproveConfig {
   try {
     if (existsSync(CONFIG_FILE)) return JSON.parse(readFileSync(CONFIG_FILE, 'utf-8'))
   } catch {}
-  return { scope: 'line-only' } // 預設：只有 LINE session
-}
-
-// ── 檢查 LINE MCP server 是否在跑 ─────────────────────────
-function isLineMcpRunning(): boolean {
-  try {
-    if (!existsSync(PID_FILE)) return false
-    const pid = parseInt(readFileSync(PID_FILE, 'utf-8').trim(), 10)
-    if (!pid) return false
-    process.kill(pid, 0) // 不殺，只檢查存在
-    return true
-  } catch { return false }
+  return { scope: 'line-only' }
 }
 
 // ── 判斷此 session 是否需要走 LINE 審批 ──────────────────
+// line-only: 檢查 LINE_APPROVE 環境變數（啟動時設定）
+// all: 所有 session 都走 LINE 審批
 function shouldApproveViaLine(): boolean {
   const config = loadConfig()
   if (config.scope === 'all') return true
-  return isLineMcpRunning()
+  return process.env.LINE_APPROVE === '1'
 }
 
 // ── 載入 LINE 憑證 ──────────────────────────────────────

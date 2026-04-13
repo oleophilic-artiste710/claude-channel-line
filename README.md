@@ -476,8 +476,16 @@ Edit `~/.claude/channels/line/approve-config.json`:
 
 | Scope | Behavior |
 |-------|----------|
-| `line-only` | Only sessions with LINE MCP active trigger LINE approval (default) |
+| `line-only` | Only sessions started with `LINE_APPROVE=1` trigger LINE approval (default) |
 | `all` | All sessions send approval requests to LINE |
+
+### Starting a LINE session with approval
+
+```bash
+LINE_APPROVE=1 claude --resume --dangerously-load-development-channels server:line
+```
+
+Only this session will send approval requests to LINE. Other sessions run the hook but auto-approve instantly (no API calls).
 
 ### What gets approved
 
