@@ -217,7 +217,7 @@ async function pushApprovalFlex(approvalId: string, toolName: string, summary: s
 // ── 輪詢等待回應 ────────────────────────────────────────
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)) }
 
-const TIMEOUT = 60000 // 60 秒
+const TIMEOUT = 300000 // 5 分鐘
 
 async function waitForApproval(approvalId: string): Promise<'approved' | 'denied' | 'timeout'> {
   const fp = join(APPROVAL_DIR, `${approvalId}.json`)
@@ -232,6 +232,17 @@ async function waitForApproval(approvalId: string): Promise<'approved' | 'denied
     await sleep(1000)
   }
   return 'timeout'
+}
+
+// 超時不刪檔，只更新狀態為 timed_out，讓使用者晚點按按鈕時能看到情境訊息
+function markTimedOut(approvalId: string) {
+  const fp = join(APPROVAL_DIR, `${approvalId}.json`)
+  try {
+    const data = JSON.parse(readFileSync(fp, 'utf-8'))
+    data.status = 'timed_out'
+    data.timedOutAt = Date.now()
+    writeFileSync(fp, JSON.stringify(data, null, 2))
+  } catch {}
 }
 
 function cleanup(approvalId: string) {
@@ -279,7 +290,12 @@ async function main() {
 
   // 等待回應
   const result = await waitForApproval(approvalId)
-  cleanup(approvalId)
+
+  if (result === 'approved' || result === 'denied') {
+    cleanup(approvalId) // 使用者有選 → 清掉
+  } else {
+    markTimedOut(approvalId) // 超時 → 保留檔案但標記
+  }
 
   if (result === 'approved') {
     console.log(JSON.stringify({
@@ -290,7 +306,7 @@ async function main() {
     }))
     process.exit(0)
   } else {
-    const reason = result === 'timeout' ? '60 秒未回應，自動拒絕' : 'LINE 使用者拒絕'
+    const reason = result === 'timeout' ? '5 分鐘未回應，自動拒絕' : 'LINE 使用者拒絕'
     console.log(JSON.stringify({
       hookSpecificOutput: {
         permissionDecision: 'deny',

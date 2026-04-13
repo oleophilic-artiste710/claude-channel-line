@@ -215,6 +215,16 @@ Bun.serve({
               if (existsSync(fp)) {
                 const data = JSON.parse(readFileSync(fp, 'utf-8'))
 
+                // 已經處理過的請求（超時、已選擇）
+                if (data.status === 'timed_out') {
+                  if (replyToken) await lineReply(replyToken, '此請求已超時（5 分鐘），Claude 那邊已自動拒絕。')
+                  continue
+                }
+                if (data.status === 'approved' || data.status === 'denied') {
+                  if (replyToken) await lineReply(replyToken, `此請求已處理過（${data.status === 'approved' ? '允許' : '拒絕'}）。`)
+                  continue
+                }
+
                 if (action === 'approve_always') {
                   // 加入永久白名單
                   let list: { patterns: string[] }
